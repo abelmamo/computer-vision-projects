@@ -1,0 +1,19 @@
+# Example dataset config for fine-tuning YOLOv8 (Ultralytics format).
+# Copy to data.yaml and point the paths at your own labeled dataset.
+#
+# Expected directory layout:
+#   dataset/
+#     images/train/*.jpg
+#     images/val/*.jpg
+#     labels/train/*.txt   (one .txt per image, YOLO format: class cx cy w h, normalized 0-1)
+#     labels/val/*.txt
+
+path: ./dataset
+train: images/train
+val: images/val
+
+names:
+  0: person
+  1: car
+  2: dog
+  3: cat
