@@ -10,9 +10,3 @@
 
 Each project's README has full setup, training, and inference instructions.
 
-```bash
-cd <project-folder>
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
