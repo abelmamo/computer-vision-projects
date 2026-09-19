@@ -8,5 +8,5 @@
 | [`image-segmentation`](./image-segmentation) | Semantic segmentation | U-Net trained from scratch (PyTorch) |
 | [`face-detection-recognition`](./face-detection-recognition) | Face detection + recognition | OpenCV Haar cascade + `face_recognition` embeddings |
 
-Each project's README has full setup, training, and inference instructions.
+
 
