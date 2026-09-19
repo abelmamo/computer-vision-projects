@@ -1,9 +1,3 @@
-# Computer Vision Projects
-
-A collection of full, runnable computer vision projects covering classic
-tasks: classification, detection, segmentation, and face recognition. Each
-subfolder is self-contained with its own README, requirements, training
-script, and inference script.
 
 ## Projects
 
@@ -15,12 +9,6 @@ script, and inference script.
 | [`face-detection-recognition`](./face-detection-recognition) | Face detection + recognition | OpenCV Haar cascade + `face_recognition` embeddings |
 
 Each project's README has full setup, training, and inference instructions.
-
-## Requirements
-
-Each project has its own `requirements.txt`. Recommended: use a separate
-virtual environment per project since dependencies (e.g. `torch` vs
-`ultralytics` vs `dlib`) don't need to overlap.
 
 ```bash
 cd <project-folder>
