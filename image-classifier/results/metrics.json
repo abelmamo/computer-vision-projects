@@ -1,0 +1,17 @@
+{
+  "test_images": 10000,
+  "test_accuracy": 0.8078,
+  "per_class_accuracy": {
+    "plane": 0.843,
+    "car": 0.916,
+    "bird": 0.682,
+    "cat": 0.586,
+    "deer": 0.811,
+    "dog": 0.734,
+    "frog": 0.86,
+    "horse": 0.856,
+    "ship": 0.901,
+    "truck": 0.889
+  },
+  "parameters": 620810
+}
