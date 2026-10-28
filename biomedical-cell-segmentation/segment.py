@@ -11,6 +11,7 @@ from skimage.measure import regionprops
 from skimage.segmentation import watershed
 from skimage.transform import resize as sk_resize
 
+from dataset import load_microscopy_image
 from unet import NucleiUNet
 
 
@@ -93,7 +94,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = load_model(args.checkpoint, device)
 
-    image = np.array(Image.open(args.image).convert("L"), dtype=np.float32) / 255.0
+    image = load_microscopy_image(args.image)
 
     foreground, boundary = predict_maps(model, image, args.img_size, device)
     instance_labels = instances_from_maps(foreground, boundary)
@@ -105,7 +106,7 @@ def main():
     csv_path = out_dir / f"stats_{Path(args.image).stem}.csv"
     n_cells = save_stats_csv(instance_labels, image, str(csv_path))
 
-    print(f"Detected {n_cells} cell(s)/nucleus/nuclei.")
+    print(f"Detected {n_cells} nuclei.")
     print(f"Saved overlay: {overlay_path}")
     print(f"Saved per-cell stats: {csv_path}")
 
