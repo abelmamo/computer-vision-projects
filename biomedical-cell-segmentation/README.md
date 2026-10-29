@@ -14,7 +14,7 @@ ground-truth nucleus with IoU above 0.5.
 
 | Method | Precision | Recall | F1 |
 |---|---|---|---|
-| Foreground mask only (connected components) | 0.801 | 0.672 | 0.731 |
+| Foreground mask only (connected components) | 0.800 | 0.672 | 0.731 |
 | Foreground + boundary maps, watershed (this pipeline) | **0.829** | **0.790** | **0.809** |
 
 Both rows use the same trained network. The only difference is whether the
