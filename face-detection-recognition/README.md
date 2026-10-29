@@ -59,7 +59,7 @@ person's name, otherwise "Unknown".
 
 ## Files
 
-- `detect_faces.py` — Haar-cascade face detection (image/webcam)
-- `enroll.py` — builds a face-embedding database from labeled photos
-- `recognize.py` — detects + identifies faces against the enrolled database
-- `requirements.txt` — dependencies
+- `detect_faces.py`: Haar-cascade face detection (image/webcam)
+- `enroll.py`: builds a face-embedding database from labeled photos
+- `recognize.py`: detects + identifies faces against the enrolled database
+- `requirements.txt`: dependencies

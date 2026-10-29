@@ -49,8 +49,8 @@ original image).
 
 ## Files
 
-- `unet.py` — U-Net architecture
-- `dataset.py` — generic image/mask dataset loader
-- `train.py` — training loop with Dice-based validation
-- `predict.py` — inference + mask/overlay visualization
-- `requirements.txt` — dependencies
+- `unet.py`: U-Net architecture
+- `dataset.py`: generic image/mask dataset loader
+- `train.py`: training loop with Dice-based validation
+- `predict.py`: inference + mask/overlay visualization
+- `requirements.txt`: dependencies
