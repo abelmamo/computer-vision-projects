@@ -1,5 +1,6 @@
 import argparse
 import csv
+import json
 from pathlib import Path
 
 import numpy as np
@@ -38,24 +39,54 @@ def predict_maps(model, image: np.ndarray, img_size: int, device: torch.device):
     return foreground, boundary
 
 
+DEFAULT_THRESHOLDS = {"fg_thresh": 0.5, "boundary_thresh": 0.5, "min_seed_size": 0}
+
+
+def load_thresholds(path):
+    """Post-processing settings chosen by tune.py on the validation split."""
+    if path and Path(path).exists():
+        return {**DEFAULT_THRESHOLDS, **json.loads(Path(path).read_text())["best"]}
+    return dict(DEFAULT_THRESHOLDS)
+
+
 def instances_from_maps(foreground: np.ndarray, boundary: np.ndarray,
-                         fg_thresh: float = 0.5, boundary_thresh: float = 0.5) -> np.ndarray:
+                        fg_thresh: float = 0.5, boundary_thresh: float = 0.5,
+                        min_seed_size: int = 0) -> np.ndarray:
     """
-    Foreground + boundary probability maps -> per-cell instance label map,
-    using boundary-eroded seeds + watershed to split touching cells.
+    Foreground + boundary probability maps -> per-nucleus instance label map,
+    using boundary-eroded seeds + watershed to split touching nuclei.
+
+    The boundary target marks the ring just outside each nucleus, so inside a
+    merged blob the boundary probability stays fairly low. The threshold that
+    best separates touching nuclei is therefore tuned on validation data
+    (tune.py) instead of assumed to be 0.5.
     """
     fg_mask = foreground > fg_thresh
     boundary_mask = boundary > boundary_thresh
 
     # Seeds are foreground pixels that are NOT near a predicted boundary,
-    # i.e. confidently "interior" pixels of each cell.
+    # i.e. confidently "interior" pixels of each nucleus.
     seed_mask = fg_mask & ~boundary_mask
     markers = cc_label(seed_mask)
+    if min_seed_size > 0:
+        # Drop tiny seed fragments so one nucleus is not split into several.
+        sizes = np.bincount(markers.ravel())
+        small = sizes < min_seed_size
+        small[0] = False
+        markers[small[markers]] = 0
+        markers = cc_label(markers > 0)
 
     # Flood outward from seeds, guided by the (inverted) foreground confidence,
     # constrained to stay within the foreground mask.
     elevation = -foreground
     instance_labels = watershed(elevation, markers=markers, mask=fg_mask)
+
+    # A small nucleus can be covered entirely by its predicted boundary and
+    # get no seed. Keep any such leftover foreground blob as its own nucleus.
+    leftovers = cc_label(fg_mask & (instance_labels == 0))
+    if leftovers.max() > 0:
+        instance_labels = np.where(leftovers > 0, leftovers + instance_labels.max(),
+                                   instance_labels)
 
     return instance_labels
 
@@ -86,6 +117,8 @@ def main():
     parser.add_argument("--checkpoint", default="nuclei_unet.pt")
     parser.add_argument("--img-size", type=int, default=256)
     parser.add_argument("--out-dir", default="./outputs")
+    parser.add_argument("--thresholds", default="results/thresholds.json",
+                        help="Post-processing settings written by tune.py")
     args = parser.parse_args()
 
     out_dir = Path(args.out_dir)
@@ -97,7 +130,7 @@ def main():
     image = load_microscopy_image(args.image)
 
     foreground, boundary = predict_maps(model, image, args.img_size, device)
-    instance_labels = instances_from_maps(foreground, boundary)
+    instance_labels = instances_from_maps(foreground, boundary, **load_thresholds(args.thresholds))
 
     overlay = label2rgb(instance_labels, image=image, bg_label=0, alpha=0.4)
     overlay_path = out_dir / f"segmented_{Path(args.image).stem}.png"

@@ -24,12 +24,13 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+from matplotlib.ticker import MaxNLocator  # noqa: E402
 import torch  # noqa: E402
 from skimage.color import label2rgb  # noqa: E402
 from skimage.measure import label as cc_label  # noqa: E402
 
 from dataset import find_samples, load_instance_label, load_microscopy_image  # noqa: E402
-from segment import instances_from_maps, load_model, predict_maps  # noqa: E402
+from segment import instances_from_maps, load_model, load_thresholds, predict_maps  # noqa: E402
 
 BLUE, ORANGE = "#2a78d6", "#eb6834"
 SURFACE, INK, INK_2, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3df"
@@ -119,6 +120,11 @@ def plot_curves(log_path: Path, out: Path):
 
     fg = [float(r["val_fg_dice"]) for r in rows]
     bd = [float(r["val_boundary_dice"]) for r in rows]
+    # train.py keeps the checkpoint with the best mean of the two Dice scores.
+    best_epoch = epochs[int(np.argmax([(a + b) / 2 for a, b in zip(fg, bd)]))]
+    ax2.axvline(best_epoch, color=INK_2, linewidth=1, linestyle="--")
+    ax2.text(best_epoch + 0.3, 0.05, f"checkpoint used (epoch {best_epoch})",
+             color=INK_2, fontsize=10)
     ax2.plot(epochs, fg, color=BLUE, linewidth=2)
     ax2.plot(epochs, bd, color=ORANGE, linewidth=2)
     ax2.text(epochs[-1] + 0.3, fg[-1], "foreground", color=INK_2, va="center", fontsize=10)
@@ -127,6 +133,8 @@ def plot_curves(log_path: Path, out: Path):
     ax2.set_ylim(0, 1)
     ax2.set_title("Validation Dice", loc="left")
     ax2.set_xlabel("Epoch")
+    for ax in (ax1, ax2):
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     fig.tight_layout()
     fig.savefig(out, dpi=160)
     plt.close(fig)
@@ -140,12 +148,16 @@ def main():
     parser.add_argument("--log", default=None, help="training_log.csv from train.py")
     parser.add_argument("--out-dir", default="results")
     parser.add_argument("--n-examples", type=int, default=3)
+    parser.add_argument("--thresholds", default="results/thresholds.json",
+                        help="Post-processing settings chosen on validation data by tune.py")
     args = parser.parse_args()
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = load_model(args.checkpoint, device)
+    settings = load_thresholds(args.thresholds)
+    print(f"Post-processing settings: {settings}")
 
     totals = {"pipeline": [0, 0, 0], "foreground_only": [0, 0, 0]}
     dice_scores, count_errors, per_image = [], [], []
@@ -155,8 +167,8 @@ def main():
         gt = load_instance_label(mask_source, layout, image.shape)
 
         foreground, boundary = predict_maps(model, image, args.img_size, device)
-        pred = instances_from_maps(foreground, boundary)
-        baseline = cc_label(foreground > 0.5)
+        pred = instances_from_maps(foreground, boundary, **settings)
+        baseline = cc_label(foreground > settings["fg_thresh"])
 
         tp, fp, fn = match_instances(gt, pred)
         btp, bfp, bfn = match_instances(gt, baseline)
@@ -176,6 +188,7 @@ def main():
         "foreground_dice_mean": round(float(np.mean(dice_scores)), 4),
         "count_abs_error_mean": round(float(np.mean(count_errors)), 2),
         "instance_iou_threshold": 0.5,
+        "post_processing": settings,
         "pipeline": summarize(*totals["pipeline"]),
         "foreground_only_baseline": summarize(*totals["foreground_only"]),
     }

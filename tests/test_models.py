@@ -93,3 +93,23 @@ def test_watershed_splits_touching_nuclei():
     boundary[5:15, 14:16] = 1.0       # predicted border between them
     labels = segment_mod.instances_from_maps(foreground, boundary)
     assert labels.max() == 2
+
+
+def test_small_seeds_are_dropped_but_nuclei_kept():
+    segment_mod = load_module("biomedical-cell-segmentation", "segment")
+    foreground = np.zeros((20, 40))
+    foreground[5:15, 3:27] = 1.0      # two touching nuclei, as above
+    foreground[5:8, 32:35] = 1.0      # a separate tiny nucleus
+    boundary = np.zeros((20, 40))
+    boundary[5:15, 14:16] = 1.0       # real border between the two nuclei
+    boundary[5:15, 5:6] = 1.0         # spurious border: cuts off a 20-pixel sliver
+    boundary[5:8, 32:35] = 1.0        # tiny nucleus fully covered by its boundary
+
+    # Without a minimum seed size, the sliver becomes an extra nucleus.
+    loose = segment_mod.instances_from_maps(foreground, boundary)
+    assert loose.max() == 4
+    # With one, the sliver is absorbed into its neighbor, and the tiny
+    # nucleus that got no seed is still kept as its own instance.
+    strict = segment_mod.instances_from_maps(foreground, boundary, min_seed_size=25)
+    assert strict.max() == 3
+    assert (strict[5:8, 32:35] > 0).all()
