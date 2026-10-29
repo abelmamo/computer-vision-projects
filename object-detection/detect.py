@@ -5,10 +5,11 @@ import cv2
 from ultralytics import YOLO
 
 
-def run_image(model: YOLO, source: str, out_dir: Path, conf: float):
+def run_image(model: YOLO, source: str, out_dir: Path, conf: float, labels: bool = True):
     results = model.predict(source=source, conf=conf, save=False, verbose=False)
     for result in results:
-        annotated = result.plot()  # BGR numpy array with boxes/labels drawn
+        # BGR numpy array with boxes (and, unless hidden, class/confidence labels) drawn
+        annotated = result.plot(labels=labels, conf=labels)
         out_path = out_dir / f"detected_{Path(result.path).name}"
         cv2.imwrite(str(out_path), annotated)
         print(f"Saved: {out_path}")
@@ -51,6 +52,9 @@ def main():
                          help="Path to weights (pretrained COCO by default, or a fine-tuned .pt)")
     parser.add_argument("--conf", type=float, default=0.25, help="Confidence threshold")
     parser.add_argument("--out-dir", default="./outputs")
+    parser.add_argument("--hide-labels", action="store_true",
+                        help="Draw boxes only, without class names and confidences "
+                             "(clearer when there are many small objects)")
     args = parser.parse_args()
 
     out_dir = Path(args.out_dir)
@@ -61,7 +65,7 @@ def main():
     if args.source is None:
         run_webcam(model, args.conf)
     else:
-        run_image(model, args.source, out_dir, args.conf)
+        run_image(model, args.source, out_dir, args.conf, labels=not args.hide_labels)
 
 
 if __name__ == "__main__":
